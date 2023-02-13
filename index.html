@@ -41,6 +41,12 @@
 
       const App = () => {
         const [auth, setAuth] = React.useState({});
+        const [notes, setNotes] = React.useState([]);
+
+        const GetNotes = async (id) => {
+          const { data: note } = await axios.get(`/api/${id}`);
+          return note;
+        };
 
         const attemptTokenLogin = async () => {
           const token = window.localStorage.getItem('token');
@@ -50,6 +56,7 @@
                 authorization: token,
               },
             });
+            GetNotes();
             setAuth(auth);
           }
         };
