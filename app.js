@@ -1,37 +1,27 @@
 const express = require('express');
 const app = express();
 const {
-  models: { User, Notes },
+  models: { User, Note },
 } = require('./db');
 const path = require('path');
 require('dotenv').config();
 
 // middleware
+async function requireToken(req, res, next) {
+  try {
+    const token = req.headers.authorization;
+    const user = await User.byToken(token);
+    req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 app.use(express.json());
 
 // routes
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-
-app.get('/:id', async (req, res, next) => {
-  try {
-    const user = await User.findOne({
-      where: {
-        id: req.params.id,
-      },
-      include: {
-        model: Notes,
-      },
-    });
-    if (user) {
-      res.send(user);
-      return;
-    }
-    res.status(404).send('Note not found');
-  } catch (error) {
-    console.error(e);
-    next(e);
-  }
-});
 
 app.post('/api/auth', async (req, res, next) => {
   try {
@@ -41,11 +31,31 @@ app.post('/api/auth', async (req, res, next) => {
   }
 });
 
-app.get('/api/auth', async (req, res, next) => {
+app.get('/api/auth', requireToken, async (req, res, next) => {
   try {
-    res.send(await User.byToken(req.headers.authorization));
+    res.send(req.user);
   } catch (ex) {
     next(ex);
+  }
+});
+
+app.get('/api/users/:userId/notes', requireToken, async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user || String(user.id) !== req.params.userId) {
+      res.status(401).send('Bad credentials');
+      return;
+    }
+    const notes = await Note.findAll({
+      where: {
+        userId: req.params.userId,
+      },
+    });
+    res.send(notes);
+    return;
+  } catch (error) {
+    console.error(e);
+    next(e);
   }
 });
 

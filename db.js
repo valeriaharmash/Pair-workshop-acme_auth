@@ -21,18 +21,21 @@ const User = conn.define('user', {
   password: STRING,
 });
 
-const Notes = conn.define('note', {
+User.beforeCreate(async (user) => {
+  user.password = await bcrypt.hash(user.password, 10);
+});
+
+const Note = conn.define('note', {
   text: STRING,
 });
 
-Notes.belongsTo(User);
-User.hasMany(Notes, { foreignKey: 'userId' });
+Note.belongsTo(User);
+User.hasMany(Note, { foreignKey: 'userId' });
 
 User.byToken = async (token) => {
   try {
     const payload = jwt.verify(token, process.env.JWT);
     const user = await User.findByPk(payload.id);
-
     if (user) {
       return user;
     }
@@ -45,10 +48,6 @@ User.byToken = async (token) => {
     throw error;
   }
 };
-
-User.beforeCreate(async (user) => {
-  user.password = await bcrypt.hash(user.password, 10);
-});
 
 User.authenticate = async ({ username, password }) => {
   const user = await User.findOne({
@@ -78,7 +77,7 @@ const syncAndSeed = async () => {
     { username: 'larry', password: 'larry_pw' },
   ];
   const [note1, note2, note3] = await Promise.all(
-    notes.map((note) => Notes.create(note))
+    notes.map((note) => Note.create(note))
   );
   const [lucy, moe, larry] = await Promise.all(
     credentials.map((credential) => User.create(credential))
@@ -98,6 +97,6 @@ module.exports = {
   syncAndSeed,
   models: {
     User,
-    Notes,
+    Note,
   },
 };
